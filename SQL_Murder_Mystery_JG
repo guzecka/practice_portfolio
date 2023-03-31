@@ -1,0 +1,239 @@
+#Directions: Run this query to find the names of the tables in this database.
+#This command is specific to SQLite. For other databases, you'll have to learn their specific syntax.
+
+SELECT name 
+  FROM sqlite_master
+ where type = 'table';
+
+#find the crime scene report for murder in SQL City on Jan 15 2018
+SELECT * FROM crime_scene_report
+WHERE type = 'murder'
+AND city = 'SQL City'
+AND date = 20180115;
+
+#Decription returned: 
+#Security footage shows that there were 2 witnesses. 
+#The first witness lives at the last house on "Northwestern Dr". 
+#The second witness, named Annabel, lives somewhere on "Franklin Ave".
+
+#Find first witness
+SELECT name, address_number, address_street_name
+FROM person
+WHERE LOWER(address_street_name) LIKE '%northwestern%'
+ORDER BY address_number DESC limit 10;
+
+#the top entry is Morty Schapiro at 4919 Northwestern Dr
+
+#Note: the given solution is:
+#SELECT * FROM person 
+#WHERE address_street_name = 'Northwestern Dr' 
+#ORDER BY address_number DESC LIMIT 1;
+
+
+#Find the second witness
+SELECT name, address_number, address_street_name
+FROM person
+WHERE LOWER(address_street_name) LIKE '%frank%'
+AND name LIKE '%ann%';
+
+#Note: the given solution is
+#SELECT * FROM person 
+#WHERE name like '%Annabel%'
+#AND address_street_name = 'Franklin Ave';
+
+
+SELECT * FROM person WHERE name = 'Annabel Miller';
+
+#Returns second witness info:
+#id: 16371	
+#name: Annabel Miller 		
+#license_id: 490173	
+#address_number: 103		
+#address_street_name: Franklin Ave	
+#ssn: 318771143
+
+#example of join for two tables
+
+#SELECT person.name, income.annual_income 
+#FROM income 
+#JOIN person 
+#  ON income.ssn = person.ssn 
+#WHERE annual_income > 450000
+
+#example of joining multiple tables
+
+#SELECT name, annual_income as income, gender, eye_color as eyes, hair_color as hair
+#FROM income i
+#JOIN person p
+#  ON i.ssn = p.ssn 
+#JOIN drivers_license dl
+#  ON p.license_id = dl.id
+#WHERE annual_income > 450000
+
+#Use a join to pull the 2 witnesses' interview transcripts
+
+SELECT person.name, interview.transcript
+FROM person
+JOIN interview
+	ON person.id = interview.person_id
+WHERE person.id = 14887 OR person.id = 16371;
+
+#returns:
+#Morty transcript: I heard a gunshot and then saw a man run out. He had a "Get Fit Now Gym" bag. The membership number on the bag started with "48Z". Only gold members have those bags. The man got into a car with a plate that included "H42W"
+#Annabel transcript: I saw the murder happen, and I recognized the killer from my gym when I was working out last week on January the 9th.
+
+#Trying to crack the case:
+#find the id of person with that license plate
+
+SELECT id, gender
+FROM drivers_license
+WHERE UPPER(plate_number) LIKE '%H42W%';
+
+#returns two males
+#id = 423327  or 664760
+
+#get Annabel Miller's gym info:
+SELECT * FROM get_fit_now_member
+WHERE name = 'Annabel Miller';
+
+#returns: id:90081, person_id:16371, name: Annabel Miller, membership_start_date: 20160208, membership_status: gold  
+
+#get Annabel's check in and out times on Jan 9
+SELECT * FROM get_fit_now_check_in
+WHERE membership_id = 90081
+AND check_in_date =20180109;
+
+#returns Annabel's date 20180109 check_in_time: 1600 and check_out_time: 1700
+
+SELECT * FROM get_fit_now_check_in
+WHERE check_in_time < 1600
+AND check_in_date = 20180109
+AND membership_id LIKE '%48Z%';
+
+#returns one entry: 
+#membership_id: 48Z55
+
+#Look up membership number to get name
+SELECT name FROM get_fit_now_member
+WHERE id = '48Z55'
+
+#returns: Jeremy Bowers
+
+#Check solution:
+INSERT INTO solution VALUES (1, 'Jeremy Bowers');
+
+SELECT value FROM solution;
+
+#Booyah Grandma!
+
+#But wait, there's more: query to interview transcript of the murderer to find the real villain.
+
+#use gym ID to find person_id to look up interview transcript
+
+SELECT get_fit_now_member.person_id, interview.transcript
+FROM get_fit_now_member
+JOIN interview
+ON get_fit_now_member.person_id = interview.person_id
+WHERE get_fit_now_member.id = '48Z55';
+
+#returns: person_id: 67318 (Jeremy Bowers) transcript: I was hired by a woman with a lot of money. 
+#I don't know her name but I know she's around 5'5" (65") or 5'7" (67"). 
+#She has red hair and she drives a Tesla Model S. 
+#I know that she attended the SQL Symphony Concert 3 times in December 2017.
+
+SELECT * FROM drivers_license 
+WHERE hair_color = 'red'
+AND gender = 'female'
+AND car_make = 'Tesla';
+
+#returns three ids: 202298, 291182, 918773	
+
+# Find facebook events SQL Symphony concert
+SELECT * FROM facebook_event_checkin 
+WHERE event_name = 'SQL Symphony Concert'
+AND date < 20180101
+ORDER BY date DESC;
+
+
+#But what if I did it as a join with facebook_event_checkin  ??
+
+#First try:
+
+SELECT get_fit_now_member.person_id, 
+get_fit_now_member.name, 
+facebook_event_checkin.event_name
+FROM get_fit_now_member g
+JOIN facebook_event_checkin f
+ON g.person_id = f.person_id
+WHERE g.person_id = 202298, 291182, 918773;
+
+#Nope. 
+
+#example of joining more than one table
+SELECT name, annual_income as income, 
+gender, eye_color as eyes, hair_color as hair
+FROM income i
+JOIN person p
+  ON i.ssn = p.ssn 
+JOIN drivers_license dl
+  ON p.license_id = dl.id
+WHERE annual_income > 450000
+
+#trying to join license id results with person id and name
+
+SELECT drivers_license.id, person.name, person.id, person.ssn
+FROM drivers_license dl
+JOIN person p
+ON dl.id=p.license_id
+
+# returns error: drivers_license.id not a recognized column.
+
+# so work around:
+SELECT * FROM person
+WHERE license_id = 202298;
+
+#suspect 1:
+# id: 99716
+# name: Miranda Priestly
+# license id: 202298
+# address number: 1883
+# address_street_name: Golden Ave	
+#ssn: 987756388
+
+#suspect 2:
+# id: 90700
+# name: Regina George
+# license id: 291182
+# address number: 332
+# address_street_name: Maple Ave	
+#ssn: 337169072
+
+
+#suspect 3:
+# id: 78881
+# name: Red Korb	
+# license id: 918773
+# address number: 107
+# address_street_name: Camerata Dr	
+#ssn: 961388910
+
+# finally go back through and query the facebook check in table by person_id
+#The only one that returned results (and the three I'm looking for) was Miranda Priestly
+SELECT * FROM facebook_event_checkin 
+WHERE event_name = 'SQL Symphony Concert'
+AND date < 20180101
+AND person_id= 99716
+ORDER BY date DESC;
+
+# Check the solution:
+INSERT INTO solution VALUES (1, 'Miranda Priestly');
+
+SELECT value FROM solution;
+
+#Returns:
+#Congrats, you found the brains behind the murder! 
+#Everyone in SQL City hails you as the greatest SQL detective of all time. 
+#Time to break out the champagne!
+
+
+
