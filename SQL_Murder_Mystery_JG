@@ -1,3 +1,7 @@
+#This is a murder mystery puzzle  created by Knight Lab as a fun way to learn and practice SQL skills
+#https://mystery.knightlab.com/
+
+
 #Directions: Run this query to find the names of the tables in this database.
 #This command is specific to SQLite. For other databases, you'll have to learn their specific syntax.
 
